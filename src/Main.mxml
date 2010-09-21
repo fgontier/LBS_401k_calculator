@@ -1,0 +1,307 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical"  xmlns:amcharts="http://www.amcharts.com/com_internal"  xmlns:com="com.*"  creationComplete="initApp()">
+	
+	<mx:Style source="assets/css/style.css" />
+	
+	<!--Using real validation tag for Validation-->
+	<mx:Array id="validators">	
+		<mx:NumberValidator id="my401kValidator" source="{my401kBalance}" property="text" trigger="{Submit}" minValue="1" maxValue="1000000" triggerEvent="click" />
+		<mx:NumberValidator id="annualContributionValidator" source="{annualContribution}" property="text" trigger="{Submit}" maxValue="500000" triggerEvent="click" />		
+		<mx:NumberValidator id="taxRateValidator" source="{taxRate}" trigger="{Submit}" triggerEvent="click" minValue="0" property="selectedIndex" lowerThanMinError="Please select a tax rate." /> 
+	</mx:Array>
+	<mx:CurrencyFormatter id="cf" currencySymbol="" alignSymbol="right"/>
+	<mx:Script>
+	<![CDATA[
+	
+	import mx.collections.ArrayCollection;
+	import mx.validators.Validator;
+	import agi.utils.Format;
+	import mx.effects.easing.*;
+	//import json.JParser;
+
+	private var my401kBalanceNum:int = 0;
+	private var annualContributionNum:Number = 0;	
+	private var taxRateChosen:Number = 0;
+	private var annualBalanceTaxPaid:Number = 0;
+	private var annualContributionTaxPaid:Number = 0;
+	private var true401kContribution:Number = 0;
+	private var true401kValue:Number = 0;
+	private var IRSBalance:Number = 0;
+	private var IRSContribution:Number = 0;	
+	private var _format:Format = new Format();
+	
+	[Bindable] private var chart1Text:String = "";
+	[Bindable] private var chart2Text:String = "";
+	[Bindable] private var chart2Title:String = "";
+	[Bindable] private var valuesArray1:ArrayCollection; 
+	[Bindable] private var valuesArray2:ArrayCollection; 
+	
+	[Embed (source = "assets/LBS_logo.swf")]
+    [Bindable] public var LBSlogo:Class;            
+
+	private function initApp():void 
+	{
+		
+	}
+	
+	private function ResetForm(evt:MouseEvent):void 
+	{
+		// reset form:
+		my401kBalance.text = "";
+		annualContribution.text = "";
+		taxRate.selectedIndex = -1;
+		
+		// reset variables:
+		taxRateChosen = 0;
+		my401kBalanceNum = 0;
+		annualContributionNum = 0;		
+		annualBalanceTaxPaid = 0;
+		annualContributionTaxPaid = 0;
+		true401kContribution = 0;
+		true401kValue = 0;
+		IRSContribution = 0;
+		IRSBalance = 0;
+		
+		//reset text:
+		chart1Text = "";
+		chart2Text = "";
+		chart2Title = "";
+		// reset the chart:
+		myPieChart1.visible = false;
+		//myPieChart2.visible = false;
+		
+		tabNavigator.selectedIndex = 0;
+	}
+	
+	private function Calculate():void 
+	{
+		myPieChart1.visible = true;
+		//myPieChart2.visible = true;
+		
+		// change string to int and remove commas:			
+		var myPattern:RegExp = /,/g;
+		my401kBalanceNum = int(my401kBalance.text.replace(myPattern, ""));				
+		annualContributionNum = int(annualContribution.text.replace(myPattern, ""));	
+		
+		// tax calculation:
+		annualBalanceTaxPaid = my401kBalanceNum * (taxRateChosen/ 100);								
+		annualContributionTaxPaid = annualContributionNum * (taxRateChosen / 100);
+		
+		// true value calculation:
+		true401kValue = Math.round(my401kBalanceNum - annualBalanceTaxPaid);
+		true401kContribution = annualContributionNum - annualContributionTaxPaid;
+		
+		// what's the IRS keeps:
+		IRSContribution = annualContributionNum - true401kContribution;		
+		IRSBalance = Math.round(my401kBalanceNum - true401kValue);
+		
+		// set up arrayCollection :
+		valuesArray1 =  new ArrayCollection([{titre: "Your Share", value:true401kValue, label: _format.currency(true401kValue, 0, "$"), pulledField:"true"}, {titre: "Taxes",value:IRSBalance, label: _format.currency(IRSBalance, 0, "$")} ] );
+				
+		//valuesArray2 =  new ArrayCollection([{titre: "Your Share", value:true401kContribution, label: _format.currency(true401kContribution, 0, "$"), pulledField:"true"}, {titre: "Taxes",value:IRSContribution, label: _format.currency(IRSContribution, 0, "$")} ] );
+		
+		valuesArray2 =  new ArrayCollection([
+		{value401: Math.round(true401kContribution), valueIRS: Math.round(IRSContribution)}
+		]);
+		
+
+		trace("true401kContribution " + true401kContribution + " IRSContribution " + IRSContribution)
+		
+		
+		// create text:
+		chart1Text = "Your Total Account Balance." + "<br>" + "<br>" + "Your real 401(k) account balance after deferred taxes are paid is "  + _format.currency(true401kValue, 0, "$") + "." + "<br>" + "<br>" + "<font color=\"#CA3F3F\">" + "Taxes take " + _format.currency(IRSBalance, 0, "$")  + "." + "</font>" + "<br>" + "<br>" + "Most Americans don't think about taxes when it comes to their 401(k). It may be important to consider the impact taxes have on your retirement strategy and what shortfalls they will create.";
+		
+		chart2Text = "Your Total Contribution." + "<br>" + "<br>" + "Your real 401(k) account contribution after deferred taxes are paid is only "  + _format.currency(true401kContribution, 0, "$") + "." + "<br>" + "<br>" + "<font color=\"#CA3F3F\">" + "Taxes take " + _format.currency(IRSContribution, 0, "$")  + "." + "</font>" + "<br>" + "<br>" + "Most Americans don't realize that only a portion of their contribution will benefit them. A portion of their annual contribution is earmarked for future tax payment.";
+
+		// show number in input text with comma formating:
+		my401kBalance.text = _format.currency(my401kBalanceNum, 0, "");
+	}
+
+	private function changeEvt(event:Event):void 
+	{
+		taxRateChosen = event.currentTarget.selectedItem.@data; 		
+	}
+	
+    public function linkHandler(event:TextEvent):void 
+	{
+        // Open the link in a new browser window.
+        navigateToURL(new URLRequest(event.text), '_self')
+    }	
+	]]>	
+			
+	</mx:Script>
+	
+	<mx:XMLList id="taxRateXMLList">
+		<taxRate label="10 %" data="10" />
+		<taxRate label="15 %" data="15" />
+		<taxRate label="20 %" data="20" />
+		<taxRate label="25 %" data="25" />
+		<taxRate label="30 %" data="30" />
+		<taxRate label="35 %" data="35" />
+		<taxRate label="40 %" data="40" />
+		<taxRate label="45 %" data="45" />
+		<taxRate label="50 %" data="50" />
+	</mx:XMLList>
+
+
+	<mx:Canvas>
+		<mx:filters>
+			<mx:DropShadowFilter alpha="0.6" />
+		</mx:filters>
+		
+		<com:GradientCanvas id="header" styleName="canvasGradientOutside" width="818" height="109" y="10">
+
+			<mx:Label styleName="canvasTitle" text="What is the real value of your 401(k)?" x="295" y="8" />
+			
+			<com:GradientCanvas styleName="canvasGradientInside"  width="806" height="72" x="6" y="32">
+		
+				<mx:Label text="401(k) balance:" x="30" y="15" />			
+				<mx:Label text="Tax rate:" x="146" y="15" />
+				<mx:Label text="401(k) Annual Contribution:" x="365" y="15" />
+				
+				<mx:Label text="$" x="18" y="38" />
+				<mx:TextInput id="my401kBalance" x="32" y="35" width="80" restrict="0-9/,/$" change="my401kBalance.text=cf.format(my401kBalance.text);"/>
+				
+				<mx:ComboBox id="taxRate" x="148" y="35" width="180" prompt="Select a tax rate" selectedIndex="-1" dataProvider="{taxRateXMLList}" labelField="@label" change="changeEvt(event)" />	
+				
+				<mx:Label text="$" x="351" y="38" />
+				<mx:TextInput id="annualContribution" x="365" y="35" width="80" restrict="0-9/,/$" change="annualContribution.text=cf.format(annualContribution.text);"/>				
+				
+				<mx:Button styleName="button" id="Submit" width="90" x="568" y="35" label="Calculate"  click="if( Validator.validateAll(validators).length==0 ){ Calculate();  }" />
+				<mx:Button styleName="button" width="90" x="685" y="35" label="Reset" click="ResetForm(event)" />	
+				
+			</com:GradientCanvas>	
+		</com:GradientCanvas>	
+				
+				
+		<com:GradientCanvas id="chartsContainer" styleName="canvasGradientOutside" gradientRatio = "[0,127]" width="818" height="436" y="138">
+						
+			<mx:Label x="130" y="412" selectable="true" link="linkHandler(event);" styleName="callToAction">
+				<mx:htmlText><![CDATA[Go to <a href='event:http://www.thelivingbalancesheet.com/get-started'><u>Get Started</u></a> and request a free consultation to find out how you can limit the impact of taxes.]]>
+				</mx:htmlText>
+			</mx:Label>	
+			
+			<com:GradientCanvas styleName="canvasGradientInside"  width="806" height="398" x="6" y="6">
+
+				<mx:TabNavigator width="100%" height="100%" id="tabNavigator">
+					
+					<mx:HBox label="401(k) Balance">
+						
+						<amcharts:AmPieChart 
+							id="myPieChart1" 
+							width="500" 
+							height="300" 
+							dataProvider="{valuesArray1}" 
+							titleField="label" 
+							valueField="value" 
+							gradient="radial" 
+							depth3D="20" 
+							angle="30"
+							fontSize="12" 
+							fontFamily="Arial" 
+							fontWeight="bold" 
+							radius="120" 
+							colors="[0x2C5291, 0x861C1A ]" 
+							gradientRatio="[100, -50]" 
+							marginRight="80"
+							marginLeft="80"
+							useHandCursor="true" 
+							buttonMode="true"
+							labelsEnabled="true" 
+							labelText="[[title]]" 
+							adjustLabelWidth="true"
+							labelRadius="40"
+							hoverAlpha="1" 					
+							pullOutDuration = "1"						
+							pulledField="pulledField"						
+							pullOutOnlyOne="true"
+							pullOutRadius ="20"
+							startDuration="0"
+							startEffect="{Exponential.easeOut}"
+							sequencedAnimation="true" 						
+							balloonText="[[titre]]: [[title]]  [[percents]]%"
+							startAngle="90" />
+							
+						<mx:Canvas>					
+							<mx:Text x="0" y="70" width="270">
+								<mx:htmlText>
+									{chart1Text}
+								</mx:htmlText>
+							</mx:Text>
+						</mx:Canvas>
+						
+					</mx:HBox>	
+					
+					<mx:HBox label="401(k) Contribution" width="100%" height="100%">	
+ 
+						<amcharts:AmSerialChart columnWidth="0.8"
+							 rotate="false"
+							 width="450"
+							 height="100%"
+							 id="chart"
+							 marginTop="20"
+							 marginRight="50"
+							 marginLeft="100"
+							 dataProvider="{valuesArray2}"
+							 startDuration="2"
+							 angle="30"
+							 depth3D="15"
+							 plotAreaFillAlphas="[0]">
+								 
+							<amcharts:graphs>						
+								
+								<amcharts:AmGraph  valueField="valueIRS" type="column" lineAlpha="0" fillAlphas="[0.5, 1]" fillColors="[0xCA3F3F,0x861C1A]" gradientOrientation="vertical" balloonText="Taxes: $[[value]]" />					
+								<amcharts:AmGraph valueField="value401" type="column" lineAlpha="0" fillAlphas="[0.2, 1]" fillColors="[0x2C5291,0x2C5291]" gradientOrientation="vertical" balloonText="Your Share: $[[value]]" />
+								
+							</amcharts:graphs>
+							
+							<!--
+							fontSize="12" 
+							descriptionField="short"
+							fillColors="[#447640,#64A252]"
+							labelPosition="bottom"
+							labelText="[[description]]"
+							balloonText="Age [[category]]: $[[value]]"						
+							-->
+							
+						   <amcharts:valueAxes>
+								<amcharts:ValueAxis stackType="regular" gridAlpha="1" gridColor="#FFFFFF" axisColor="#2C5291" axisAlpha="1" axisThickness="3"  unit="$" unitPosition="left" min="0" />                    
+							</amcharts:valueAxes>
+					
+							<amcharts:categoryAxis>
+								<amcharts:CategoryAxis gridAlpha="1" gridColor="#ffffff" axisColor="#2C5291" axisAlpha="1" axisThickness="3" />
+							</amcharts:categoryAxis>
+							
+						</amcharts:AmSerialChart>
+							
+						<mx:Canvas>					
+							<mx:Text x="0" y="70" width="270">
+								<mx:htmlText>
+									{chart2Text}
+								</mx:htmlText>
+							</mx:Text>
+						</mx:Canvas>	
+												
+					</mx:HBox>
+					
+				</mx:TabNavigator> 	
+
+			</com:GradientCanvas>
+
+		</com:GradientCanvas>
+				
+	</mx:Canvas>	
+
+	<mx:Canvas width="800" height="60">
+					
+		<mx:Image id="lbslogo" source="{LBSlogo}" x="4" y="13" width="65%" height="65%" />
+
+		<mx:Text styleName="legal" x="180" y="5" selectable="false" width="600" height="55"> 
+			<mx:text>
+				<![CDATA[This calculator is designed to be informational and educational only, and when used alone, does not constitute investment advice. The results presented by this calculator are hypothetical and may not reflect actual results. The information is not intended to be considered tax or legal advice. Neither The Guardian Life Insurance Company of America nor its affiliates, subsidiaries, employees or agents (including Guardian Insurance & Annuity Company, Inc. and Park Avenue Securities LLC) are responsible for any human or mechanical errors or omissions arising from the use of these calculators.]]>
+			</mx:text>	
+		</mx:Text>
+	</mx:Canvas>	
+
+
+</mx:Application>
