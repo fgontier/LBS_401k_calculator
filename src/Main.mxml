@@ -177,7 +177,7 @@
 		<com:GradientCanvas id="chartsContainer" styleName="canvasGradientOutside" gradientRatio = "[0,127]" width="818" height="436" y="138">
 						
 			<mx:Label x="190" y="412" selectable="true" link="linkHandler(event);" styleName="callToAction">
-				<mx:htmlText><![CDATA[Go to <a href='event:/contact'><u>Find an LBS Expert near you</u></a> to see how you can limit the impact of taxes.]]>
+				<mx:htmlText><![CDATA[Go to <a href='event:/contact' target='_top' class="calc-out"><u>Find an LBS Expert near you</u></a> to see how you can limit the impact of taxes.]]>
 				</mx:htmlText>
 			</mx:Label>	
 			
